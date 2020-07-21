@@ -17,7 +17,9 @@ type MongoConfig struct {
 }
 
 /*
- JSON config "mongo.json" should look like this:
+ JSON конфиг "mongo.json"
+ должен лежать в папке cfg
+ И должен выглядеть так:
 {
  "hostname": [
         "hostname:27017",

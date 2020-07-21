@@ -61,25 +61,34 @@ func (db *DB) GetCollection(dbName, collection string) *mongo.Collection {
 	return coll
 }
 
-//Создание сессии для будущих транзакций
-func (db *DB) StartSession() (mongo.Session, error) {
+//Запуск транзакции
+func (db *DB) InsertTransaction(coll *mongo.Collection, data bson.M) (*mongo.InsertOneResult, error) {
 	session, err := db.Client.StartSession()
 	if err != nil {
 		return nil, err
 	}
-	return session, err
-}
-
-//Тестовая функция для проверки
-func InsertOne(coll *mongo.Collection) (*mongo.InsertOneResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	res, err := coll.InsertOne(ctx, bson.M{
-		"GUID":  "2ADEA345-7F7A-4313-87AE-F05E8B2DE678",
-		"value": "Yzg0ZjE4YTItYzZjNy00ODUwLWJlMTUtOTNmOWNiYWVmM2Iz",
-	})
+	err = session.StartTransaction()
 	if err != nil {
 		return nil, err
 	}
+	var res *mongo.InsertOneResult
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = mongo.WithSession(ctx, session,
+		func(sc mongo.SessionContext) error {
+			res, err = coll.InsertOne(sc, data)
+			if err != nil {
+				return err
+			}
+			err = session.CommitTransaction(sc)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	session.EndSession(ctx)
 	return res, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/compico/restauth/internal/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -43,7 +44,11 @@ func main() {
 		panic("")
 	}
 	coll := database.GetCollection("restauth", "testtoken")
-	res, err := db.InsertOne(coll)
+	data := bson.M{
+		"GUID":  "test1",
+		"value": "test2",
+	}
+	res, err := database.InsertTransaction(coll, data)
 	if err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
 		panic("")
