@@ -1,44 +1,59 @@
-package main
+package db
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 )
 
-type Config struct {
-	MongoDB MongoDB `json:"mongodb"`
-}
-type MongoDB struct {
+type MongoConfig struct {
 	Hostname []string `json:"hostname"`
 	DBname   string   `json:"dbname"`
 	User     string   `json:"user"`
 	Password string   `json:"password"`
+	URI      string   `json:"-"`
 }
 
 /*
- JSON config "config.json" should look like this:
+ JSON config "mongo.json" should look like this:
 {
-    "mongodb": {
-        "hostname": [
-            "hostname:27017",
-            "hostname:27018",
-            "hostname:27019"
-        ],
-        "dbname": "restauth",
-        "user": "admin",
-        "password": "123"
-    }
+ "hostname": [
+        "hostname:27017",
+        "hostname:27018",
+        "hostname:27019"
+    ],
+    "dbname": "restauth",
+    "user": "admin",
+    "password": "123"
 }
+
 */
+
+func NewConfig() (*MongoConfig, error) {
+	mongodb := new(MongoConfig)
+	fmt.Printf("[INFO] %v\n", "Reading config.")
+	err := mongodb.readConfig()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("[INFO] %v\n", "Config ready.")
+	fmt.Printf("[INFO] %v\n", "Getting URI for connetion.")
+	err = mongodb.getUri()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("[INFO] %v\n", "URI ready.")
+	return mongodb, nil
+}
 
 /*
 Возвращает URI взятый из конфигов.
 Работает только с серверами в режиме Replica Set
 mongodb+srv://<username>:<password>@<hostname>/dbname?w=majority
 */
-func (mongodb *MongoDB) getUri() (string, error) {
+func (mongodb *MongoConfig) getUri() error {
 	//"mongodb://<username>:<password>@<cluster-address>/test?w=majority"
 	var user *url.Userinfo
 	if mongodb.User != "" {
@@ -50,23 +65,24 @@ func (mongodb *MongoDB) getUri() (string, error) {
 		}
 	}
 	if len(mongodb.Hostname) == 0 {
-		return "", errors.New("Config error! Field 'HostName' is nil")
+		return errors.New("Config error! Field 'HostName' is nil")
 	}
-	uri := url.URL{
+	x := url.URL{
 		Scheme:   "mongodb",
 		User:     user,
 		Host:     mongodb.getHostname(),
-		Path:     mongodb.DBname,
+		Path:     "/",
 		RawQuery: "replicaSet=myrepls",
 	}
-	return uri.String(), nil
+	mongodb.URI = x.String()
+	return nil
 }
 
 /*
 Из массива адресов делает 1 большой адрес
 соеденяя через запяту
 */
-func (mongodb *MongoDB) getHostname() string {
+func (mongodb *MongoConfig) getHostname() string {
 	if len(mongodb.Hostname) == 1 {
 		return mongodb.Hostname[0]
 	}
@@ -82,17 +98,16 @@ func (mongodb *MongoDB) getHostname() string {
 }
 
 /*
-Читает файл config.json и возвращает структуру
+Читает файл mongo.json и возвращает структуру
 */
-func readConfig() (Config, error) {
-	file, err := ioutil.ReadFile("./config.json")
+func (config *MongoConfig) readConfig() error {
+	file, err := ioutil.ReadFile("./cfg/mongo.json")
 	if err != nil {
-		return Config{}, err
+		return err
 	}
-	config := new(Config)
 	err = json.Unmarshal(file, config)
 	if err != nil {
-		return *config, err
+		return err
 	}
-	return *config, nil
+	return nil
 }
