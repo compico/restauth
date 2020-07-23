@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/compico/restauth/internal/db"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -19,6 +18,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("[DEBUG] Your URI: %v\n", cfg.URI)
 	database = db.NewClient()
 	fmt.Printf("[INFO] %v\n", "Creating new client for MongoDB")
 	err = database.InitClient(cfg.URI)
@@ -28,6 +28,10 @@ func init() {
 }
 
 func main() {
+
+}
+
+/*
 	ctx, err := database.Connect()
 	if err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
@@ -43,15 +47,20 @@ func main() {
 		fmt.Printf("[ERROR] %v\n", err)
 		panic("")
 	}
-	coll := database.GetCollection("restauth", "testtoken")
+	err = database.AddUserInDB("restauth", "c3b6de2f-756b-41ce-9072-9fd5210de008")
+	if err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		panic(err)
+	}
+	coll := database.GetCollection("restauth", "c3b6de2f-756b-41ce-9072-9fd5210de008")
 	data := bson.M{
 		"GUID":  "test1",
 		"value": "test2",
 	}
-	res, err := database.InsertTransaction(coll, data)
+	restrans, err := database.InsertTransaction(coll, data)
 	if err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
-		panic("")
+		panic(err)
 	}
-	fmt.Println(res.InsertedID)
-}
+	fmt.Println(restrans.InsertedID)
+*/

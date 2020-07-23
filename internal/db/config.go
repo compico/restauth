@@ -9,11 +9,12 @@ import (
 )
 
 type MongoConfig struct {
-	Hostname []string `json:"hostname"`
-	DBname   string   `json:"dbname"`
-	User     string   `json:"user"`
-	Password string   `json:"password"`
-	URI      string   `json:"-"`
+	Hostname   []string `json:"hostname"`
+	DBname     string   `json:"dbname"`
+	User       string   `json:"user"`
+	Password   string   `json:"password"`
+	ReplicaSet string   `json:"replicaset"`
+	URI        string   `json:"-"`
 }
 
 /*
@@ -25,7 +26,8 @@ type MongoConfig struct {
         "hostname:27017",
         "hostname:27018",
         "hostname:27019"
-    ],
+	],
+	"replicaset": "namereplicaset"
     "dbname": "restauth",
     "user": "admin",
     "password": "123"
@@ -69,12 +71,14 @@ func (mongodb *MongoConfig) getUri() error {
 	if len(mongodb.Hostname) == 0 {
 		return errors.New("Config error! Field 'HostName' is nil")
 	}
+	query := "authSource=admin&replicaSet=" +
+		mongodb.ReplicaSet + "&readPreference=primary&ssl=true"
 	x := url.URL{
-		Scheme:   "mongodb",
+		Scheme:   "mongodb+srv",
 		User:     user,
 		Host:     mongodb.getHostname(),
-		Path:     "/",
-		RawQuery: "replicaSet=myrepls",
+		Path:     "/admin",
+		RawQuery: query,
 	}
 	mongodb.URI = x.String()
 	return nil

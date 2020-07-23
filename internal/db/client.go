@@ -7,7 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 //Наследование клиента из драйвера для создания новых методов
@@ -46,7 +45,7 @@ func (db *DB) Connect() (context.Context, error) {
 func (db *DB) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	err := db.Client.Ping(ctx, readpref.Primary())
+	err := db.Client.Ping(ctx, options.Client().ReadPreference)
 	if err != nil {
 		return err
 	}
@@ -61,7 +60,36 @@ func (db *DB) GetCollection(dbName, collection string) *mongo.Collection {
 	return coll
 }
 
-//Запуск транзакции
+func (db *DB) AddUserInDB(dbName, guid string) error {
+	session, err := db.Client.StartSession()
+	if err != nil {
+		return err
+	}
+	err = session.StartTransaction()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
+		err = session.CommitTransaction(sc)
+		if err != nil {
+			return err
+		}
+		err := db.Client.Database(dbName).CreateCollection(sc, guid)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	session.EndSession(ctx)
+	return nil
+}
+
+//Метод записи данных в транзакции
 func (db *DB) InsertTransaction(coll *mongo.Collection, data bson.M) (*mongo.InsertOneResult, error) {
 	session, err := db.Client.StartSession()
 	if err != nil {
@@ -72,15 +100,13 @@ func (db *DB) InsertTransaction(coll *mongo.Collection, data bson.M) (*mongo.Ins
 		return nil, err
 	}
 	var res *mongo.InsertOneResult
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err = mongo.WithSession(ctx, session,
+	err = mongo.WithSession(context.Background(), session,
 		func(sc mongo.SessionContext) error {
-			res, err = coll.InsertOne(sc, data)
+			err = session.CommitTransaction(sc)
 			if err != nil {
 				return err
 			}
-			err = session.CommitTransaction(sc)
+			res, err = coll.InsertOne(sc, data)
 			if err != nil {
 				return err
 			}
@@ -89,6 +115,6 @@ func (db *DB) InsertTransaction(coll *mongo.Collection, data bson.M) (*mongo.Ins
 	if err != nil {
 		return nil, err
 	}
-	session.EndSession(ctx)
+	session.EndSession(context.Background())
 	return res, nil
 }
