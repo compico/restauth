@@ -1,6 +1,9 @@
 package user
 
-import "go.mongodb.org/mongo-driver/mongo"
+import (
+	"github.com/dgrijalva/jwt-go"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Users struct {
 	User []User
@@ -8,8 +11,8 @@ type Users struct {
 
 type User struct {
 	GUID    string
-	Access  string
-	Refresh string
+	Access  []*jwt.Token
+	Refresh []*jwt.Token
 	Tokens  []*mongo.InsertOneResult
 }
 

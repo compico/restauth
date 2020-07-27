@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,14 +32,25 @@ func (db *DB) InitClient(uri string) error {
 }
 
 //Подключение серверу
-func (db *DB) Connect() (context.Context, error) {
+func (db *DB) Connect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err := db.Client.Connect(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return ctx, nil
+	return nil
+}
+
+func (db *DB) Disconnect() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := db.Client.Disconnect(ctx)
+	if err != nil {
+		fmt.Printf("[ERROR] %v\n", err.Error())
+		return err
+	}
+	return nil
 }
 
 //Отправка пинг сигнала для проверки состояния сервера
@@ -117,4 +129,11 @@ func (db *DB) InsertTransaction(coll *mongo.Collection, data bson.M) (*mongo.Ins
 	}
 	session.EndSession(context.Background())
 	return res, nil
+}
+
+func (db *DB) HaveCollection(guid string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	col, err := db.Client.Database("restauth").ListCollectionNames(ctx, guid)
+	return col, err
 }

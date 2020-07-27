@@ -107,7 +107,7 @@ func (mongodb *MongoConfig) getHostname() string {
 Читает файл mongo.json и возвращает структуру
 */
 func (config *MongoConfig) readConfig() error {
-	file, err := ioutil.ReadFile("./cfg/mongo.json")
+	file, err := ioutil.ReadFile("cfg/mongo.json")
 	if err != nil {
 		return err
 	}

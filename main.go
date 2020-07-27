@@ -1,34 +1,29 @@
 package main
 
 import (
-	"fmt"
+	"net/http"
+	"time"
 
-	"github.com/compico/restauth/internal/db"
+	"github.com/compico/restauth/internal/apiserver"
+	"github.com/julienschmidt/httprouter"
 )
-
-var (
-	cfg      *db.MongoConfig
-	database *db.DB
-)
-
-func init() {
-	var err error
-	fmt.Printf("[INFO] %v\n", "Creating MongoDB configuration")
-	cfg, err = db.NewConfig()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("[DEBUG] Your URI: %v\n", cfg.URI)
-	database = db.NewClient()
-	fmt.Printf("[INFO] %v\n", "Creating new client for MongoDB")
-	err = database.InitClient(cfg.URI)
-	if err != nil {
-		panic(err)
-	}
-}
 
 func main() {
-
+	router := httprouter.New()
+	router.GET("/api/v1/auth/:guid", apiserver.AddNewUser)
+	router.GET("/api/v1/test/:guid", apiserver.Test)
+	service := apiserver.ApiServer{
+		Server: &http.Server{
+			Addr:         ":8080",
+			Handler:      router,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+		},
+	}
+	err := service.Server.ListenAndServe()
+	if err != nil {
+		panic(err)
+	}
 }
 
 /*
